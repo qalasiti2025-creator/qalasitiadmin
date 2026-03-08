@@ -362,20 +362,17 @@ tbody tr:hover td{background:#fafaf8;}
 <div class="toast-container" id="toasts"></div>
 
 <script>
-var ADMIN_URL = localStorage.getItem('qalasiti_admin_url') || '';
+var ADMIN_URL = localStorage.getItem('qalasiti_admin_url') || 'https://script.google.com/macros/s/AKfycbwY1Sc4-w9KeIR3qYQD4DUqv_YJMQP8ZsbReFl0T7Zu92yfKcXmREsCxW1VkVIScuGu/exec';
 var allProds = [], allArts = [];
 var editProd = null, editArt = null;
 var prodImgUrls = [], artImgUrl = '';
 var pendingDel = null;
 
 window.addEventListener('load', function() {
-  if (!ADMIN_URL) {
-    document.getElementById('setup-section').style.display = 'flex';
-    document.getElementById('dashboard').classList.remove('active');
-  } else {
-    document.getElementById('settings-api-url').value = ADMIN_URL;
-    refreshAll();
-  }
+  document.getElementById('setup-section').style.display = 'none';
+  document.getElementById('settings-api-url').value = ADMIN_URL;
+  document.getElementById('dashboard').classList.add('active');
+  refreshAll();
   setupDrag('prod-drop', function(files){ uploadProdImages(files); });
   setupDrag('art-drop',  function(files){ uploadArtImage(files); });
 });
