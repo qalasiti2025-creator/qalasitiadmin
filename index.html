@@ -461,7 +461,35 @@ function get(path) {
     document.head.appendChild(s);
   });
 }
-function post(body) { return fetch(ADMIN_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+function post(body) {
+  // Apps Script blocks CORS on POST — use no-cors fetch + poll via JSONP for result
+  // We encode the payload as a query param GET request instead (Apps Script handles both)
+  // For write operations: embed payload in URL via a special 'data' param + callback
+  return new Promise(function(resolve, reject) {
+    var cb = '_p' + Math.random().toString(36).slice(2);
+    var s = document.createElement('script');
+    var timer = setTimeout(function(){
+      reject(new Error('Timeout - check Apps Script deployment'));
+      try{document.head.removeChild(s);}catch(e){}
+      delete window[cb];
+    }, 30000);
+    window[cb] = function(d){
+      clearTimeout(timer);
+      delete window[cb];
+      try{document.head.removeChild(s);}catch(e){}
+      resolve(d);
+    };
+    s.onerror = function(){
+      clearTimeout(timer);
+      reject(new Error('Request failed'));
+      try{document.head.removeChild(s);}catch(e){}
+    };
+    // Encode body as base64 to safely pass in URL
+    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(body))));
+    s.src = ADMIN_URL + '?method=post&payload=' + encodeURIComponent(encoded) + '&callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
 
 // ── Dashboard ──
 function renderDash() {
@@ -651,6 +679,42 @@ function deleteArt() {
 }
 
 // ── Image Upload ──
+// ── Image Compression ──
+function compressImage(file, maxW, maxH, quality) {
+  maxW = maxW || 1200; maxH = maxH || 1600; quality = quality || 0.82;
+  return new Promise(function(resolve) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var w = img.width, h = img.height;
+      // Scale down if needed
+      if (w > maxW || h > maxH) {
+        var ratio = Math.min(maxW/w, maxH/h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        // Convert blob to base64
+        var reader = new FileReader();
+        reader.onload = function(e) { resolve({ b64: e.target.result.split(',')[1], mime: 'image/jpeg', size: blob.size }); };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = function() {
+      // Fallback: read as-is
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve({ b64: e.target.result.split(',')[1], mime: file.type, size: file.size }); };
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
+  });
+}
+
 function uploadProdImages(files) {
   if (!ADMIN_URL) return toast('Connect to Admin API first', 'error');
   var arr = Array.from(files); if (!arr.length) return;
@@ -659,22 +723,28 @@ function uploadProdImages(files) {
   prog.style.display = 'block'; bar.style.width = '0%';
   var done = 0;
   arr.forEach(function(file) {
-    if (file.size > 5*1024*1024) { toast(file.name+' too large (max 5MB)','error'); done++; return; }
-    var r = new FileReader();
-    r.onload = function(e) {
-      post({action:'upload_image', data:e.target.result.split(',')[1], mime:file.type, filename:file.name})
-        .then(function(res) {
-          done++;
-          bar.style.width = Math.round(done/arr.length*100)+'%';
-          if (res.status==='ok') {
-            prodImgUrls.push(res.url);
-            renderProdPreviews(); syncProdFields();
-            toast('Uploaded!','success');
-          } else { toast('Upload failed: '+(res.message||''),'error'); }
-          if (done===arr.length) setTimeout(function(){ prog.style.display='none'; },800);
-        }).catch(function(){ done++; toast('Upload error','error'); });
-    };
-    r.readAsDataURL(file);
+    toast('Compressing ' + file.name + '...', 'info');
+    compressImage(file).then(function(compressed) {
+      var origMB = (file.size/1024/1024).toFixed(1);
+      var newMB  = (compressed.size/1024/1024).toFixed(1);
+      toast(file.name + ': ' + origMB + 'MB → ' + newMB + 'MB', 'info');
+      return post({action:'upload_image', data: compressed.b64, mime: compressed.mime, filename: file.name.replace(/\.[^.]+$/, '.jpg')});
+    }).then(function(res) {
+      done++;
+      bar.style.width = Math.round(done/arr.length*100) + '%';
+      if (res.status === 'ok') {
+        prodImgUrls.push(res.url);
+        renderProdPreviews(); syncProdFields();
+        toast('Uploaded successfully!', 'success');
+      } else {
+        toast('Upload failed: ' + (res.message||'unknown error'), 'error');
+      }
+      if (done === arr.length) setTimeout(function(){ prog.style.display='none'; }, 800);
+    }).catch(function(e) {
+      done++;
+      toast('Error: ' + e.message, 'error');
+      if (done === arr.length) setTimeout(function(){ prog.style.display='none'; }, 800);
+    });
   });
 }
 
@@ -694,19 +764,19 @@ function syncProdFields() {
 function uploadArtImage(files) {
   if (!files.length) return;
   var file = files[0];
-  var r = new FileReader();
-  r.onload = function(e) {
-    post({action:'upload_image',data:e.target.result.split(',')[1],mime:file.type,filename:file.name})
-      .then(function(res){
-        if (res.status==='ok') {
-          artImgUrl = res.url;
-          document.getElementById('af-imgurl').value = res.url;
-          showArtPreview(res.url);
-          toast('Photo uploaded!','success');
-        } else toast('Upload failed','error');
-      });
-  };
-  r.readAsDataURL(file);
+  toast('Compressing photo...', 'info');
+  compressImage(file, 800, 800, 0.85).then(function(compressed) {
+    return post({action:'upload_image', data: compressed.b64, mime: compressed.mime, filename: file.name.replace(/\.[^.]+$/, '.jpg')});
+  }).then(function(res) {
+    if (res.status === 'ok') {
+      artImgUrl = res.url;
+      document.getElementById('af-imgurl').value = res.url;
+      showArtPreview(res.url);
+      toast('Photo uploaded!', 'success');
+    } else {
+      toast('Upload failed: ' + (res.message||''), 'error');
+    }
+  }).catch(function(e){ toast('Error: '+e.message,'error'); });
 }
 
 function showArtPreview(url) {
