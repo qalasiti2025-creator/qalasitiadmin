@@ -688,30 +688,72 @@ function compressImage(file, maxW, maxH, quality) {
     img.onload = function() {
       URL.revokeObjectURL(url);
       var w = img.width, h = img.height;
-      // Scale down if needed
       if (w > maxW || h > maxH) {
         var ratio = Math.min(maxW/w, maxH/h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
       }
       var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(function(blob) {
-        // Convert blob to base64
-        var reader = new FileReader();
-        reader.onload = function(e) { resolve({ b64: e.target.result.split(',')[1], mime: 'image/jpeg', size: blob.size }); };
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg', quality);
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', quality);
     };
-    img.onerror = function() {
-      // Fallback: read as-is
-      var reader = new FileReader();
-      reader.onload = function(e) { resolve({ b64: e.target.result.split(',')[1], mime: file.type, size: file.size }); };
-      reader.readAsDataURL(file);
-    };
+    img.onerror = function() { resolve(file); };
     img.src = url;
+  });
+}
+
+// ── Direct Drive Upload (no size limit) ──
+var driveToken = null;
+var driveFolderId = null;
+
+function getUploadCreds() {
+  return new Promise(function(resolve, reject) {
+    if (driveToken && driveFolderId) { resolve({token: driveToken, folder_id: driveFolderId}); return; }
+    get('?action=upload_creds').then(function(r) {
+      if (r.status !== 'ok') { reject(new Error(r.message||'Could not get upload credentials')); return; }
+      driveToken   = r.token;
+      driveFolderId = r.folder_id;
+      resolve({token: r.token, folder_id: r.folder_id});
+    }).catch(reject);
+  });
+}
+
+function uploadToDrive(blob, filename) {
+  return getUploadCreds().then(function(creds) {
+    // Step 1: initiate resumable upload
+    var meta = JSON.stringify({ name: filename, parents: [creds.folder_id] });
+    return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + creds.token,
+        'Content-Type': 'multipart/related; boundary=qalasiti_boundary'
+      },
+      body: '--qalasiti_boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+        + meta + '\r\n--qalasiti_boundary\r\nContent-Type: ' + blob.type + '\r\n\r\n'
+        + blob + '\r\n--qalasiti_boundary--'
+    });
+  }).then(function(r) { return r.json(); }).then(function(file) {
+    if (!file.id) throw new Error('Upload failed: ' + JSON.stringify(file));
+    // Make file public
+    return getUploadCreds().then(function(creds) {
+      return fetch('https://www.googleapis.com/drive/v3/files/' + file.id + '/permissions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + creds.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' })
+      });
+    }).then(function() {
+      return 'https://drive.google.com/uc?export=view&id=' + file.id;
+    });
+  });
+}
+
+function uploadFileToDrive(file, maxW, maxH) {
+  return compressImage(file, maxW, maxH).then(function(blob) {
+    var fname = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '.jpg');
+    var origMB = (file.size/1024/1024).toFixed(1);
+    var newMB  = (blob.size/1024/1024).toFixed(1);
+    if (origMB !== newMB) toast('Compressed: ' + origMB + 'MB → ' + newMB + 'MB', 'info');
+    return uploadToDrive(blob, fname);
   });
 }
 
@@ -723,26 +765,17 @@ function uploadProdImages(files) {
   prog.style.display = 'block'; bar.style.width = '0%';
   var done = 0;
   arr.forEach(function(file) {
-    toast('Compressing ' + file.name + '...', 'info');
-    compressImage(file).then(function(compressed) {
-      var origMB = (file.size/1024/1024).toFixed(1);
-      var newMB  = (compressed.size/1024/1024).toFixed(1);
-      toast(file.name + ': ' + origMB + 'MB → ' + newMB + 'MB', 'info');
-      return post({action:'upload_image', data: compressed.b64, mime: compressed.mime, filename: file.name.replace(/\.[^.]+$/, '.jpg')});
-    }).then(function(res) {
+    toast('Uploading ' + file.name + '...', 'info');
+    uploadFileToDrive(file, 1200, 1600).then(function(url) {
       done++;
       bar.style.width = Math.round(done/arr.length*100) + '%';
-      if (res.status === 'ok') {
-        prodImgUrls.push(res.url);
-        renderProdPreviews(); syncProdFields();
-        toast('Uploaded successfully!', 'success');
-      } else {
-        toast('Upload failed: ' + (res.message||'unknown error'), 'error');
-      }
+      prodImgUrls.push(url);
+      renderProdPreviews(); syncProdFields();
+      toast('Image uploaded!', 'success');
       if (done === arr.length) setTimeout(function(){ prog.style.display='none'; }, 800);
     }).catch(function(e) {
       done++;
-      toast('Error: ' + e.message, 'error');
+      toast('Upload failed: ' + e.message, 'error');
       if (done === arr.length) setTimeout(function(){ prog.style.display='none'; }, 800);
     });
   });
@@ -763,20 +796,13 @@ function syncProdFields() {
 
 function uploadArtImage(files) {
   if (!files.length) return;
-  var file = files[0];
-  toast('Compressing photo...', 'info');
-  compressImage(file, 800, 800, 0.85).then(function(compressed) {
-    return post({action:'upload_image', data: compressed.b64, mime: compressed.mime, filename: file.name.replace(/\.[^.]+$/, '.jpg')});
-  }).then(function(res) {
-    if (res.status === 'ok') {
-      artImgUrl = res.url;
-      document.getElementById('af-imgurl').value = res.url;
-      showArtPreview(res.url);
-      toast('Photo uploaded!', 'success');
-    } else {
-      toast('Upload failed: ' + (res.message||''), 'error');
-    }
-  }).catch(function(e){ toast('Error: '+e.message,'error'); });
+  toast('Uploading photo...', 'info');
+  uploadFileToDrive(files[0], 800, 800).then(function(url) {
+    artImgUrl = url;
+    document.getElementById('af-imgurl').value = url;
+    showArtPreview(url);
+    toast('Photo uploaded!', 'success');
+  }).catch(function(e){ toast('Upload failed: '+e.message,'error'); });
 }
 
 function showArtPreview(url) {
