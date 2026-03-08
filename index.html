@@ -405,15 +405,42 @@ function showSection(name) {
 
 function refreshAll() {
   if (!ADMIN_URL) return;
-  setStatus('<span class="spinner spinner-dark"></span> Syncing...');
-  get('?action=all').then(function(d) {
-    if (d.status !== 'ok') throw new Error(d.message || 'Error');
+  setStatus('<span class="spinner spinner-dark"></span> Connecting...');
+  // Use no-cors fetch won't work; use script tag (JSONP) approach like main site
+  var cb = '_adm' + Math.random().toString(36).slice(2);
+  var s = document.createElement('script');
+  var done = false;
+  var timer = setTimeout(function(){
+    if (done) return;
+    done = true;
+    document.head.removeChild(s);
+    setStatus('✗ Auth Error', 'var(--red)');
+    showAuthError();
+  }, 10000);
+  window[cb] = function(d) {
+    done = true; clearTimeout(timer);
+    try { document.head.removeChild(s); } catch(e){}
+    delete window[cb];
+    if (!d || d.status !== 'ok') { setStatus('✗ Error', 'var(--red)'); toast('API error: '+(d&&d.message||'unknown'),'error'); return; }
     allProds = d.products || []; allArts = d.artisans || [];
     renderDash(); renderProds(allProds); renderArts(allArts);
     document.getElementById('nav-prod-count').textContent = allProds.length;
     document.getElementById('nav-art-count').textContent = allArts.length;
     setStatus('✓ Connected', 'var(--green)');
-  }).catch(function(e) { setStatus('✗ Error', 'var(--red)'); toast('Connection failed: '+e.message,'error'); });
+  };
+  s.src = ADMIN_URL + '?action=all&callback=' + cb;
+  s.onerror = function(){
+    done = true; clearTimeout(timer);
+    try { document.head.removeChild(s); } catch(e){}
+    setStatus('✗ Error', 'var(--red)');
+    showAuthError();
+  };
+  document.head.appendChild(s);
+}
+
+function showAuthError() {
+  toast('Cannot connect — redeploy AdminCode.gs with Access: Anyone', 'error');
+  document.getElementById('dash-tbody').innerHTML = '<tr><td colspan="6" style="padding:2rem;color:var(--red);font-size:.82rem;">⚠ Cannot connect to Google Sheet.<br><br><strong>Fix:</strong> In Apps Script → Deploy → Manage deployments → Edit → change Who has access to <strong>"Anyone"</strong> → Deploy new version → paste new URL in Settings.</td></tr>';
 }
 
 function setStatus(html, color) {
@@ -422,7 +449,18 @@ function setStatus(html, color) {
   el.style.color = color || 'var(--muted)';
 }
 
-function get(path) { return fetch(ADMIN_URL + path).then(function(r){ return r.json(); }); }
+function get(path) {
+  // Use JSONP to avoid CORS issues with Apps Script
+  return new Promise(function(resolve, reject) {
+    var cb = '_g' + Math.random().toString(36).slice(2);
+    var s = document.createElement('script');
+    var timer = setTimeout(function(){ reject(new Error('Timeout')); try{document.head.removeChild(s);}catch(e){} }, 10000);
+    window[cb] = function(d){ clearTimeout(timer); delete window[cb]; try{document.head.removeChild(s);}catch(e){} resolve(d); };
+    s.onerror = function(){ clearTimeout(timer); reject(new Error('Script load failed')); };
+    s.src = ADMIN_URL + path + (path.includes('?') ? '&' : '?') + 'callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
 function post(body) { return fetch(ADMIN_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
 
 // ── Dashboard ──
