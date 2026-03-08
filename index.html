@@ -462,7 +462,7 @@ function prodRow(p, showDel) {
     +'<td>'+(p.quantity||'—')+'</td>'
     +'<td><span class="badge '+(act?'badge-active':'badge-inactive')+'">'+(act?'Active':'Hidden')+'</span></td>'
     +'<td><div class="td-actions"><button class="btn btn-outline btn-sm" onclick="openProductDrawer(\''+p.id+'\')">Edit</button>'
-    +(showDel ? '<button class="btn btn-danger btn-sm" onclick="confirmDel(\'product\',\''+p.id+'\',\''+p.name.replace(/'/g,'\\'')+'\')">Delete</button>' : '')
+    +(showDel ? '<button class="btn btn-danger btn-sm" onclick="confirmDel(\'product\',\''+p.id+'\',\''+p.name.replace(/[^a-zA-Z0-9 ]/g,'')+'\')">Delete</button>' : '')
     +'</div></td></tr>';
 }
 
@@ -480,7 +480,7 @@ function renderArts(arts) {
       +'<td>'+(a.years_experience||'—')+' yrs</td>'
       +'<td><span class="badge '+(act?'badge-active':'badge-inactive')+'">'+(act?'Active':'Hidden')+'</span></td>'
       +'<td><div class="td-actions"><button class="btn btn-outline btn-sm" onclick="openArtisanDrawer(\''+a.id+'\')">Edit</button>'
-      +'<button class="btn btn-danger btn-sm" onclick="confirmDel(\'artisan\',\''+a.id+'\',\''+a.name.replace(/'/g,'\\'')+'\')">Delete</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="confirmDel(\'artisan\',\''+a.id+'\',\''+a.name.replace(/[^a-zA-Z0-9 ]/g,'')+'\')">Delete</button>'
       +'</div></td></tr>';
   }).join('');
 }
@@ -672,7 +672,7 @@ function uploadArtImage(files) {
 }
 
 function showArtPreview(url) {
-  document.getElementById('art-previews').innerHTML = '<div class="img-preview-item"><img src="'+url+'" style="border-radius:50%;"><button class="remove-img" onclick="artImgUrl=\\'\\';document.getElementById(\\'art-previews\\').innerHTML=\\'\\';document.getElementById(\\'af-imgurl\\').value=\\'\\'">×</button></div>';
+  document.getElementById('art-previews').innerHTML = '<div class="img-preview-item"><img src="'+url+'" style="border-radius:50%;"><button class="remove-img" onclick="clearArtImg()">x</button></div>';
 }
 
 function setupDrag(zoneId, handler) {
@@ -706,6 +706,12 @@ function closeConfirm() { document.getElementById('confirm-overlay').classList.r
 function openDriveFolder() {
   if (!ADMIN_URL) return toast('Connect API first','error');
   get('?action=folders').then(function(r){ if(r.folder_url) window.open(r.folder_url,'_blank'); });
+}
+
+function clearArtImg() {
+  artImgUrl = '';
+  document.getElementById('art-previews').innerHTML = '';
+  document.getElementById('af-imgurl').value = '';
 }
 
 function toast(msg, type) {
