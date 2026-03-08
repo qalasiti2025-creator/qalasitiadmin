@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qalasiti — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#111111;--cream:#f0f4e8;--cream-dark:#e4e8dc;--gold:#c8a96e;--gold-dark:#a8893e;--white:#ffffff;--muted:#888;--red:#c0392b;--green:#2d6a2d;--serif:'Cormorant Garamond',serif;--sans:'Jost',sans-serif;--ease:.2s ease;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:#f5f5f2;color:var(--ink);min-height:100vh;}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+.sidebar{background:var(--ink);color:var(--cream);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-logo{padding:2rem 1.5rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.08);}
+.sidebar-logo h1{font-family:var(--serif);font-size:1.4rem;font-weight:300;letter-spacing:.12em;}
+.sidebar-logo p{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-top:.3rem;}
+.nav-section{padding:1.5rem 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.nav-label{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:0 1.5rem;margin-bottom:.6rem;}
+.nav-item{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.5rem;cursor:pointer;font-size:.78rem;letter-spacing:.08em;color:rgba(255,255,255,.6);transition:all var(--ease);border-left:2px solid transparent;}
+.nav-item:hover{color:var(--cream);background:rgba(255,255,255,.04);}
+.nav-item.active{color:var(--gold);border-left-color:var(--gold);background:rgba(200,169,110,.06);}
+.sidebar-foot{margin-top:auto;padding:1.5rem;border-top:1px solid rgba(255,255,255,.08);font-size:.68rem;color:rgba(255,255,255,.3);line-height:1.7;}
+.sidebar-foot a{color:var(--gold);text-decoration:none;cursor:pointer;}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{background:var(--white);border-bottom:1px solid var(--cream-dark);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.topbar-title{font-family:var(--serif);font-size:1.5rem;font-weight:300;}
+.topbar-actions{display:flex;gap:.8rem;align-items:center;}
+.content{padding:2rem;flex:1;}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.3rem;font-family:var(--sans);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;border:none;transition:all var(--ease);white-space:nowrap;}
+.btn-primary{background:var(--ink);color:var(--cream);}
+.btn-primary:hover{background:var(--gold);color:var(--ink);}
+.btn-outline{background:none;border:1px solid rgba(17,17,17,.25);color:var(--ink);}
+.btn-outline:hover{border-color:var(--ink);background:var(--ink);color:var(--cream);}
+.btn-danger{background:none;border:1px solid rgba(192,57,43,.3);color:var(--red);}
+.btn-danger:hover{background:var(--red);color:white;border-color:var(--red);}
+.btn-sm{padding:.4rem .9rem;font-size:.65rem;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.card{background:var(--white);border:1px solid var(--cream-dark);padding:1.5rem;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+.card-title{font-family:var(--serif);font-size:1.2rem;font-weight:400;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+.stat{background:var(--white);border:1px solid var(--cream-dark);padding:1.5rem;}
+.stat-val{font-family:var(--serif);font-size:2.2rem;font-weight:300;line-height:1;margin-bottom:.4rem;}
+.stat-label{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.stat-sub{font-size:.72rem;color:var(--green);margin-top:.3rem;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+thead th{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding:.8rem 1rem;text-align:left;border-bottom:2px solid var(--cream-dark);white-space:nowrap;}
+tbody td{padding:.9rem 1rem;border-bottom:1px solid var(--cream-dark);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:#fafaf8;}
+.td-img{width:48px;height:60px;object-fit:cover;}
+.td-name{font-weight:500;}
+.td-muted{color:var(--muted);font-size:.75rem;}
+.td-actions{display:flex;gap:.5rem;}
+.badge{display:inline-block;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;padding:.2rem .7rem;}
+.badge-active{background:rgba(45,106,45,.12);color:var(--green);}
+.badge-inactive{background:rgba(192,57,43,.1);color:var(--red);}
+.badge-cat{background:rgba(200,169,110,.15);color:var(--gold-dark);}
+.drawer-overlay{position:fixed;inset:0;background:rgba(17,17,17,.5);z-index:100;opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s;}
+.drawer-overlay.open{opacity:1;visibility:visible;}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100vw);background:var(--white);z-index:101;transform:translateX(100%);transition:transform .4s cubic-bezier(.25,.46,.45,.94);display:flex;flex-direction:column;overflow:hidden;}
+.drawer.open{transform:translateX(0);}
+.drawer-head{padding:1.5rem 2rem;border-bottom:1px solid var(--cream-dark);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.drawer-head h2{font-family:var(--serif);font-size:1.5rem;font-weight:300;}
+.drawer-close{background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--ink);padding:.3rem;transition:color var(--ease);}
+.drawer-close:hover{color:var(--gold);}
+.drawer-body{flex:1;overflow-y:auto;padding:2rem;}
+.drawer-foot{padding:1.2rem 2rem;border-top:1px solid var(--cream-dark);display:flex;gap:.8rem;justify-content:flex-end;flex-shrink:0;background:var(--white);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
+.form-field{display:flex;flex-direction:column;gap:.4rem;}
+.form-field.full{grid-column:1/-1;}
+.form-field label{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.form-field input,.form-field select,.form-field textarea{border:1px solid rgba(17,17,17,.2);padding:.7rem .9rem;font-family:var(--sans);font-size:.85rem;color:var(--ink);background:var(--white);outline:none;transition:border-color var(--ease);width:100%;}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--gold);}
+.form-field textarea{resize:vertical;min-height:90px;}
+.form-field .hint{font-size:.65rem;color:var(--muted);}
+.form-section-title{font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin:1.5rem 0 .5rem;padding-bottom:.5rem;border-bottom:1px solid var(--cream-dark);grid-column:1/-1;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.8rem 0;grid-column:1/-1;}
+.toggle{position:relative;width:44px;height:24px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:rgba(17,17,17,.15);cursor:pointer;transition:background var(--ease);border-radius:12px;}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;transition:transform var(--ease);border-radius:50%;}
+.toggle input:checked + .toggle-slider{background:var(--gold);}
+.toggle input:checked + .toggle-slider::before{transform:translateX(20px);}
+.img-upload-area{border:2px dashed rgba(17,17,17,.2);padding:2rem;text-align:center;cursor:pointer;transition:all var(--ease);position:relative;grid-column:1/-1;border-radius:2px;}
+.img-upload-area:hover,.img-upload-area.drag{border-color:var(--gold);background:rgba(200,169,110,.04);}
+.img-upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.img-upload-icon{font-size:2rem;opacity:.3;margin-bottom:.5rem;}
+.img-upload-text{font-size:.75rem;color:var(--muted);}
+.img-upload-text strong{color:var(--ink);}
+.img-previews{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.5rem;grid-column:1/-1;}
+.img-preview-item{position:relative;width:80px;height:100px;}
+.img-preview-item img{width:100%;height:100%;object-fit:cover;}
+.img-preview-item .remove-img{position:absolute;top:-6px;right:-6px;background:var(--red);color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center;}
+.upload-progress{width:100%;height:3px;background:var(--cream-dark);margin-top:.5rem;grid-column:1/-1;overflow:hidden;display:none;}
+.upload-progress-bar{height:100%;background:var(--gold);width:0%;transition:width .3s ease;}
+.toast-container{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:.5rem;}
+.toast{display:flex;align-items:center;gap:.8rem;padding:.9rem 1.3rem;min-width:260px;font-size:.78rem;animation:toastIn .3s ease;}
+.toast.success{background:var(--ink);color:var(--cream);}
+.toast.error{background:var(--red);color:white;}
+.toast.info{background:var(--gold);color:var(--ink);}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.section{display:none;}
+.section.active{display:block;}
+.confirm-overlay{position:fixed;inset:0;background:rgba(17,17,17,.6);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;}
+.confirm-overlay.open{opacity:1;visibility:visible;}
+.confirm-box{background:var(--white);padding:2.5rem;width:min(400px,90vw);text-align:center;}
+.confirm-box h3{font-family:var(--serif);font-size:1.4rem;font-weight:300;margin-bottom:.8rem;}
+.confirm-box p{font-size:.82rem;color:var(--muted);margin-bottom:2rem;line-height:1.7;}
+.confirm-btns{display:flex;gap:.8rem;justify-content:center;}
+.setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:2rem;}
+.setup-screen h2{font-family:var(--serif);font-size:2rem;font-weight:300;margin-bottom:1rem;}
+.setup-screen p{font-size:.85rem;color:var(--muted);max-width:440px;line-height:1.8;margin-bottom:1.5rem;}
+.setup-input{display:flex;gap:.8rem;width:100%;max-width:500px;}
+.setup-input input{flex:1;border:1px solid rgba(17,17,17,.2);padding:.75rem 1rem;font-family:var(--sans);font-size:.85rem;outline:none;}
+.setup-input input:focus{border-color:var(--gold);}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+.spinner-dark{border-color:rgba(17,17,17,.1);border-top-color:var(--ink);}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:900px){.app{grid-template-columns:1fr;}.sidebar{display:none;}.stats{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Qalasiti</h1>
+      <p>Admin Panel</p>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Catalogue</div>
+      <div class="nav-item" id="nav-products" onclick="showSection('products')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        Products
+        <span id="nav-prod-count" style="margin-left:auto;font-size:.6rem;background:rgba(200,169,110,.2);color:var(--gold);padding:.1rem .5rem;border-radius:10px;"></span>
+      </div>
+      <div class="nav-item" id="nav-artisans" onclick="showSection('artisans')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Artisans
+        <span id="nav-art-count" style="margin-left:auto;font-size:.6rem;background:rgba(200,169,110,.2);color:var(--gold);padding:.1rem .5rem;border-radius:10px;"></span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Settings</div>
+      <div class="nav-item" id="nav-settings" onclick="showSection('settings')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        Configuration
+      </div>
+    </div>
+    <div class="sidebar-foot">
+      Admin Panel v1.0<br>
+      <a onclick="showSection('settings')">⚙ Change API URL</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="btn btn-outline btn-sm" onclick="refreshAll()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          Refresh
+        </button>
+        <span id="api-status" style="font-size:.65rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;">Not connected</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- SETUP -->
+      <div id="setup-section" class="setup-screen" style="display:none;">
+        <div style="font-size:3rem;margin-bottom:1rem;">🔗</div>
+        <h2>Connect Your Sheet</h2>
+        <p>Deploy <strong>AdminCode.gs</strong> as a separate Web App in your Google Sheet, then paste the URL below.</p>
+        <p style="font-size:.72rem;margin-bottom:1.5rem;">Deploy → Web App → Execute as: <strong>Me</strong> → Access: <strong>Only myself</strong></p>
+        <div class="setup-input">
+          <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/.../exec">
+          <button class="btn btn-primary" onclick="saveApiUrl()">Connect</button>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div id="dashboard" class="section active">
+        <div class="stats">
+          <div class="stat"><div class="stat-val" id="stat-products">—</div><div class="stat-label">Products</div><div class="stat-sub" id="stat-active"></div></div>
+          <div class="stat"><div class="stat-val" id="stat-artisans">—</div><div class="stat-label">Artisans</div></div>
+          <div class="stat"><div class="stat-val" id="stat-cats">—</div><div class="stat-label">Categories</div></div>
+          <div class="stat"><div class="stat-val" id="stat-imgs">—</div><div class="stat-label">With Images</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Products</div>
+            <button class="btn btn-primary btn-sm" onclick="openProductDrawer()">+ Add Product</button>
+          </div>
+          <div class="table-wrap"><table><tbody id="dash-tbody"><tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)"><span class="spinner spinner-dark"></span> Loading...</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div id="products" class="section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">All Products</div>
+            <div style="display:flex;gap:.8rem;">
+              <input type="text" id="prod-search" placeholder="Search..." style="border:1px solid rgba(17,17,17,.15);padding:.55rem .9rem;font-family:var(--sans);font-size:.8rem;outline:none;width:180px;" oninput="filterProds()">
+              <button class="btn btn-primary" onclick="openProductDrawer()">+ New Product</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead><tbody id="prod-tbody"><tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--muted);"><span class="spinner spinner-dark"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ARTISANS -->
+      <div id="artisans" class="section">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Artisan Profiles</div>
+            <button class="btn btn-primary" onclick="openArtisanDrawer()">+ New Artisan</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Photo</th><th>Name</th><th>State</th><th>Craft</th><th>Experience</th><th>Status</th><th>Actions</th></tr></thead><tbody id="art-tbody"><tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--muted);"><span class="spinner spinner-dark"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="settings" class="section">
+        <div class="card" style="max-width:560px;">
+          <div class="card-header"><div class="card-title">Configuration</div></div>
+          <div style="display:flex;flex-direction:column;gap:1.5rem;">
+            <div class="form-field">
+              <label>Admin Apps Script URL</label>
+              <input type="text" id="settings-api-url" placeholder="https://script.google.com/macros/s/.../exec">
+              <span class="hint">Your deployed AdminCode.gs Web App URL</span>
+            </div>
+            <button class="btn btn-primary" style="align-self:flex-start;" onclick="saveSettings()">Save</button>
+            <hr style="border:none;border-top:1px solid var(--cream-dark);">
+            <div>
+              <div style="font-size:.72rem;font-weight:500;margin-bottom:.8rem;">Quick Links</div>
+              <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" onclick="openDriveFolder()">📁 Open Drive Folder</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- PRODUCT DRAWER -->
+<div class="drawer-overlay" id="prod-overlay" onclick="closeProd()"></div>
+<div class="drawer" id="prod-drawer">
+  <div class="drawer-head">
+    <h2 id="prod-title">New Product</h2>
+    <button class="drawer-close" onclick="closeProd()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-grid">
+      <div class="form-section-title">Basic Information</div>
+      <div class="form-field"><label>Product ID</label><input id="pf-id" placeholder="Auto-generated"><span class="hint">Leave blank for new products</span></div>
+      <div class="form-field"><label>Product Name *</label><input id="pf-name" placeholder="e.g. Kashmir Shawl Blazer"></div>
+      <div class="form-field full"><label>Description *</label><textarea id="pf-desc" placeholder="Describe the product..."></textarea></div>
+      <div class="form-field">
+        <label>Category *</label>
+        <select id="pf-cat"><option value="">Select</option><option>Blazers</option><option>Shirts</option><option>Waistcoats</option><option>Kurtas</option><option>Trousers</option><option>Accessories</option><option>Sets</option></select>
+      </div>
+      <div class="form-field">
+        <label>Badge</label>
+        <select id="pf-badge"><option value="">None</option><option>New</option><option>Bestseller</option><option>Limited</option><option>Sale</option></select>
+      </div>
+
+      <div class="form-section-title">Pricing & Inventory</div>
+      <div class="form-field"><label>Price (₹) *</label><input id="pf-price" type="number" placeholder="12500"></div>
+      <div class="form-field"><label>Original Price (₹) — strike-through</label><input id="pf-orig" type="number" placeholder="Leave blank if no discount"></div>
+      <div class="form-field"><label>Stock Quantity</label><input id="pf-qty" type="number" placeholder="10"></div>
+      <div class="form-field"><label>Available Sizes</label><input id="pf-sizes" placeholder="XS,S,M,L,XL,XXL"><span class="hint">Comma separated</span></div>
+
+      <div class="form-section-title">Artisan & Craft</div>
+      <div class="form-field"><label>Artisan State</label><input id="pf-state" placeholder="e.g. Jammu & Kashmir"></div>
+      <div class="form-field"><label>Craft Type</label><input id="pf-craft" placeholder="e.g. Kani Weave"></div>
+      <div class="form-field full"><label>Payment Link (Razorpay / PhonePe / UPI)</label><input id="pf-rzp" type="url" placeholder="https://rzp.io/l/..."><span class="hint">Leave blank to hide Buy Now button</span></div>
+
+      <div class="form-section-title">Product Images</div>
+      <div class="img-upload-area" id="prod-drop">
+        <input type="file" id="prod-file" accept="image/*" multiple onchange="uploadProdImages(this.files)">
+        <div class="img-upload-icon">🖼</div>
+        <div class="img-upload-text"><strong>Click to upload</strong> or drag & drop<br><span style="font-size:.7rem;">JPG, PNG, WEBP — up to 5MB each</span></div>
+      </div>
+      <div class="upload-progress" id="prod-prog"><div class="upload-progress-bar" id="prod-prog-bar"></div></div>
+      <div class="img-previews" id="prod-previews"></div>
+      <div class="form-field full"><label>Or paste image URLs (comma separated)</label><input id="pf-images" placeholder="https://drive.google.com/uc?id=..."><span class="hint">Uploaded images auto-fill this</span></div>
+      <div class="form-field full"><label>Primary / Cover Image URL</label><input id="pf-imgurl" type="url" placeholder="Auto-filled from first upload"></div>
+
+      <div class="form-section-title">Visibility</div>
+      <div class="toggle-row"><label>Active — show on website</label><label class="toggle"><input type="checkbox" id="pf-active" checked><span class="toggle-slider"></span></label></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn btn-danger btn-sm" id="prod-del-btn" onclick="deleteProd()" style="display:none;margin-right:auto;">Delete</button>
+    <button class="btn btn-outline" onclick="closeProd()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveProd()"><span class="spinner" id="prod-spinner" style="display:none;"></span> Save Product</button>
+  </div>
+</div>
+
+<!-- ARTISAN DRAWER -->
+<div class="drawer-overlay" id="art-overlay" onclick="closeArt()"></div>
+<div class="drawer" id="art-drawer">
+  <div class="drawer-head">
+    <h2 id="art-title">New Artisan</h2>
+    <button class="drawer-close" onclick="closeArt()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="form-grid">
+      <div class="form-section-title">Artisan Details</div>
+      <div class="form-field"><label>ID</label><input id="af-id" placeholder="Auto-generated"></div>
+      <div class="form-field"><label>Full Name *</label><input id="af-name" placeholder="e.g. Razia Begum"></div>
+      <div class="form-field"><label>State *</label><input id="af-state" placeholder="e.g. Jammu & Kashmir"></div>
+      <div class="form-field"><label>Craft *</label><input id="af-craft" placeholder="e.g. Kani Weave"></div>
+      <div class="form-field"><label>Years of Experience</label><input id="af-years" type="number" placeholder="25"></div>
+      <div class="form-field full"><label>Bio *</label><textarea id="af-bio" placeholder="Artisan story and background..."></textarea></div>
+
+      <div class="form-section-title">Photo</div>
+      <div class="img-upload-area" id="art-drop">
+        <input type="file" id="art-file" accept="image/*" onchange="uploadArtImage(this.files)">
+        <div class="img-upload-icon">👤</div>
+        <div class="img-upload-text"><strong>Click to upload</strong> artisan photo</div>
+      </div>
+      <div class="img-previews" id="art-previews"></div>
+      <div class="form-field full"><label>Or paste image URL</label><input id="af-imgurl" type="url" placeholder="https://..."></div>
+
+      <div class="form-section-title">Visibility</div>
+      <div class="toggle-row"><label>Active — show on website</label><label class="toggle"><input type="checkbox" id="af-active" checked><span class="toggle-slider"></span></label></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn btn-danger btn-sm" id="art-del-btn" onclick="deleteArt()" style="display:none;margin-right:auto;">Delete</button>
+    <button class="btn btn-outline" onclick="closeArt()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveArt()"><span class="spinner" id="art-spinner" style="display:none;"></span> Save Artisan</button>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Delete?</h3>
+    <p id="confirm-msg">This cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+var ADMIN_URL = localStorage.getItem('qalasiti_admin_url') || '';
+var allProds = [], allArts = [];
+var editProd = null, editArt = null;
+var prodImgUrls = [], artImgUrl = '';
+var pendingDel = null;
+
+window.addEventListener('load', function() {
+  if (!ADMIN_URL) {
+    document.getElementById('setup-section').style.display = 'flex';
+    document.getElementById('dashboard').classList.remove('active');
+  } else {
+    document.getElementById('settings-api-url').value = ADMIN_URL;
+    refreshAll();
+  }
+  setupDrag('prod-drop', function(files){ uploadProdImages(files); });
+  setupDrag('art-drop',  function(files){ uploadArtImage(files); });
+});
+
+function saveApiUrl() {
+  var u = document.getElementById('api-url-input').value.trim();
+  if (!u) return toast('Paste your Admin Apps Script URL', 'error');
+  ADMIN_URL = u; localStorage.setItem('qalasiti_admin_url', u);
+  document.getElementById('settings-api-url').value = u;
+  document.getElementById('setup-section').style.display = 'none';
+  document.getElementById('dashboard').classList.add('active');
+  refreshAll();
+}
+
+function saveSettings() {
+  var u = document.getElementById('settings-api-url').value.trim();
+  if (!u) return toast('Enter Admin API URL', 'error');
+  ADMIN_URL = u; localStorage.setItem('qalasiti_admin_url', u);
+  toast('Saved!', 'success'); refreshAll();
+}
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  var el = document.getElementById(name); if (el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  var nav = document.getElementById('nav-'+name); if (nav) nav.classList.add('active');
+  var titles = {dashboard:'Dashboard',products:'Products',artisans:'Artisans',settings:'Configuration'};
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+}
+
+function refreshAll() {
+  if (!ADMIN_URL) return;
+  setStatus('<span class="spinner spinner-dark"></span> Syncing...');
+  get('?action=all').then(function(d) {
+    if (d.status !== 'ok') throw new Error(d.message || 'Error');
+    allProds = d.products || []; allArts = d.artisans || [];
+    renderDash(); renderProds(allProds); renderArts(allArts);
+    document.getElementById('nav-prod-count').textContent = allProds.length;
+    document.getElementById('nav-art-count').textContent = allArts.length;
+    setStatus('✓ Connected', 'var(--green)');
+  }).catch(function(e) { setStatus('✗ Error', 'var(--red)'); toast('Connection failed: '+e.message,'error'); });
+}
+
+function setStatus(html, color) {
+  var el = document.getElementById('api-status');
+  el.innerHTML = html;
+  el.style.color = color || 'var(--muted)';
+}
+
+function get(path) { return fetch(ADMIN_URL + path).then(function(r){ return r.json(); }); }
+function post(body) { return fetch(ADMIN_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){ return r.json(); }); }
+
+// ── Dashboard ──
+function renderDash() {
+  var act = allProds.filter(function(p){ return p.active==='TRUE'; });
+  var cats = [...new Set(allProds.map(function(p){ return p.category; }).filter(Boolean))];
+  var imgs = allProds.filter(function(p){ return p.image_url; });
+  document.getElementById('stat-products').textContent = allProds.length;
+  document.getElementById('stat-active').textContent = act.length + ' active';
+  document.getElementById('stat-artisans').textContent = allArts.length;
+  document.getElementById('stat-cats').textContent = cats.length;
+  document.getElementById('stat-imgs').textContent = imgs.length;
+  var tbody = document.getElementById('dash-tbody');
+  if (!allProds.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted);">No products yet.</td></tr>'; return; }
+  tbody.innerHTML = allProds.slice(-6).reverse().map(function(p){ return prodRow(p, false); }).join('');
+}
+
+// ── Products ──
+function renderProds(prods) {
+  var tbody = document.getElementById('prod-tbody');
+  if (!prods.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--muted);">No products.</td></tr>'; return; }
+  tbody.innerHTML = prods.map(function(p){ return prodRow(p, true); }).join('');
+}
+
+function filterProds() {
+  var q = document.getElementById('prod-search').value.toLowerCase();
+  renderProds(q ? allProds.filter(function(p){ return (p.name+p.category+p.craft_type).toLowerCase().includes(q); }) : allProds);
+}
+
+function prodRow(p, showDel) {
+  var img = p.image_url ? '<img class="td-img" src="'+p.image_url+'" alt="">' : '<div style="width:48px;height:60px;background:var(--cream-dark);display:flex;align-items:center;justify-content:center;">📦</div>';
+  var act = p.active === 'TRUE';
+  return '<tr><td>'+img+'</td>'
+    +'<td><div class="td-name">'+p.name+'</div><div class="td-muted">'+p.id+'</div></td>'
+    +'<td><span class="badge badge-cat">'+(p.category||'—')+'</span></td>'
+    +'<td>₹'+Number(p.price||0).toLocaleString('en-IN')+'</td>'
+    +'<td>'+(p.quantity||'—')+'</td>'
+    +'<td><span class="badge '+(act?'badge-active':'badge-inactive')+'">'+(act?'Active':'Hidden')+'</span></td>'
+    +'<td><div class="td-actions"><button class="btn btn-outline btn-sm" onclick="openProductDrawer(\''+p.id+'\')">Edit</button>'
+    +(showDel ? '<button class="btn btn-danger btn-sm" onclick="confirmDel(\'product\',\''+p.id+'\',\''+p.name.replace(/'/g,'\\'')+'\')">Delete</button>' : '')
+    +'</div></td></tr>';
+}
+
+// ── Artisans ──
+function renderArts(arts) {
+  var tbody = document.getElementById('art-tbody');
+  if (!arts.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--muted);">No artisans.</td></tr>'; return; }
+  tbody.innerHTML = arts.map(function(a){
+    var img = a.image_url ? '<img class="td-img" src="'+a.image_url+'" style="border-radius:50%;width:48px;height:48px;" alt="">' : '<div style="width:48px;height:48px;background:var(--cream-dark);border-radius:50%;display:flex;align-items:center;justify-content:center;">👤</div>';
+    var act = a.active === 'TRUE';
+    return '<tr><td>'+img+'</td>'
+      +'<td><div class="td-name">'+a.name+'</div><div class="td-muted">'+a.id+'</div></td>'
+      +'<td>'+a.state+'</td>'
+      +'<td><span class="badge badge-cat">'+(a.craft||'—')+'</span></td>'
+      +'<td>'+(a.years_experience||'—')+' yrs</td>'
+      +'<td><span class="badge '+(act?'badge-active':'badge-inactive')+'">'+(act?'Active':'Hidden')+'</span></td>'
+      +'<td><div class="td-actions"><button class="btn btn-outline btn-sm" onclick="openArtisanDrawer(\''+a.id+'\')">Edit</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="confirmDel(\'artisan\',\''+a.id+'\',\''+a.name.replace(/'/g,'\\'')+'\')">Delete</button>'
+      +'</div></td></tr>';
+  }).join('');
+}
+
+// ── Product Drawer ──
+function openProductDrawer(id) {
+  prodImgUrls = [];
+  document.getElementById('prod-previews').innerHTML = '';
+  editProd = id ? allProds.find(function(p){ return p.id===id; }) : null;
+  document.getElementById('prod-title').textContent = editProd ? 'Edit Product' : 'New Product';
+  document.getElementById('prod-del-btn').style.display = editProd ? 'block' : 'none';
+  var f = editProd || {};
+  document.getElementById('pf-id').value      = f.id||'';
+  document.getElementById('pf-name').value    = f.name||'';
+  document.getElementById('pf-desc').value    = f.description||'';
+  document.getElementById('pf-price').value   = f.price||'';
+  document.getElementById('pf-orig').value    = f.original_price||'';
+  document.getElementById('pf-qty').value     = f.quantity||'';
+  document.getElementById('pf-cat').value     = f.category||'';
+  document.getElementById('pf-badge').value   = f.badge||'';
+  document.getElementById('pf-sizes').value   = f.sizes||'';
+  document.getElementById('pf-state').value   = f.artisan_state||'';
+  document.getElementById('pf-craft').value   = f.craft_type||'';
+  document.getElementById('pf-rzp').value     = f.razorpay_link||'';
+  document.getElementById('pf-images').value  = f.images||'';
+  document.getElementById('pf-imgurl').value  = f.image_url||'';
+  document.getElementById('pf-active').checked = !editProd || f.active==='TRUE';
+  if (f.images) { prodImgUrls = f.images.split(',').map(function(u){return u.trim();}).filter(Boolean); }
+  else if (f.image_url) { prodImgUrls = [f.image_url]; }
+  renderProdPreviews();
+  document.getElementById('prod-overlay').classList.add('open');
+  document.getElementById('prod-drawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProd() {
+  document.getElementById('prod-overlay').classList.remove('open');
+  document.getElementById('prod-drawer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function saveProd() {
+  var name = document.getElementById('pf-name').value.trim();
+  var price = document.getElementById('pf-price').value.trim();
+  if (!name) return toast('Product name required', 'error');
+  if (!price) return toast('Price required', 'error');
+  var sp = document.getElementById('prod-spinner'); sp.style.display = 'inline-block';
+  var p = {
+    id: document.getElementById('pf-id').value.trim(),
+    name: name, description: document.getElementById('pf-desc').value.trim(),
+    price: price, original_price: document.getElementById('pf-orig').value.trim(),
+    image_url: document.getElementById('pf-imgurl').value.trim(),
+    images: document.getElementById('pf-images').value.trim(),
+    quantity: document.getElementById('pf-qty').value.trim(),
+    category: document.getElementById('pf-cat').value,
+    razorpay_link: document.getElementById('pf-rzp').value.trim(),
+    badge: document.getElementById('pf-badge').value,
+    artisan_state: document.getElementById('pf-state').value.trim(),
+    craft_type: document.getElementById('pf-craft').value.trim(),
+    sizes: document.getElementById('pf-sizes').value.trim(),
+    active: document.getElementById('pf-active').checked ? 'TRUE' : 'FALSE'
+  };
+  post({action:'save_product',product:p}).then(function(r){
+    sp.style.display = 'none';
+    if (r.status !== 'ok') throw new Error(r.message);
+    toast('Product saved!', 'success'); closeProd(); refreshAll();
+  }).catch(function(e){ sp.style.display='none'; toast('Error: '+e.message,'error'); });
+}
+
+function deleteProd() {
+  var id = document.getElementById('pf-id').value || (editProd && editProd.id);
+  if (!id) return;
+  confirmDel('product', id, editProd ? editProd.name : id);
+  closeProd();
+}
+
+// ── Artisan Drawer ──
+function openArtisanDrawer(id) {
+  artImgUrl = '';
+  document.getElementById('art-previews').innerHTML = '';
+  editArt = id ? allArts.find(function(a){ return a.id===id; }) : null;
+  document.getElementById('art-title').textContent = editArt ? 'Edit Artisan' : 'New Artisan';
+  document.getElementById('art-del-btn').style.display = editArt ? 'block' : 'none';
+  var a = editArt || {};
+  document.getElementById('af-id').value    = a.id||'';
+  document.getElementById('af-name').value  = a.name||'';
+  document.getElementById('af-state').value = a.state||'';
+  document.getElementById('af-craft').value = a.craft||'';
+  document.getElementById('af-years').value = a.years_experience||'';
+  document.getElementById('af-bio').value   = a.bio||'';
+  document.getElementById('af-imgurl').value= a.image_url||'';
+  document.getElementById('af-active').checked = !editArt || a.active==='TRUE';
+  if (a.image_url) { artImgUrl = a.image_url; showArtPreview(a.image_url); }
+  document.getElementById('art-overlay').classList.add('open');
+  document.getElementById('art-drawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeArt() {
+  document.getElementById('art-overlay').classList.remove('open');
+  document.getElementById('art-drawer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function saveArt() {
+  var name = document.getElementById('af-name').value.trim();
+  if (!name) return toast('Name required', 'error');
+  var sp = document.getElementById('art-spinner'); sp.style.display = 'inline-block';
+  var a = {
+    id: document.getElementById('af-id').value.trim(), name: name,
+    state: document.getElementById('af-state').value.trim(),
+    craft: document.getElementById('af-craft').value.trim(),
+    bio: document.getElementById('af-bio').value.trim(),
+    image_url: document.getElementById('af-imgurl').value.trim() || artImgUrl,
+    years_experience: document.getElementById('af-years').value.trim(),
+    active: document.getElementById('af-active').checked ? 'TRUE' : 'FALSE'
+  };
+  post({action:'save_artisan',artisan:a}).then(function(r){
+    sp.style.display='none';
+    if (r.status!=='ok') throw new Error(r.message);
+    toast('Artisan saved!','success'); closeArt(); refreshAll();
+  }).catch(function(e){ sp.style.display='none'; toast('Error: '+e.message,'error'); });
+}
+
+function deleteArt() {
+  var id = document.getElementById('af-id').value || (editArt && editArt.id);
+  if (!id) return;
+  confirmDel('artisan', id, editArt ? editArt.name : id);
+  closeArt();
+}
+
+// ── Image Upload ──
+function uploadProdImages(files) {
+  if (!ADMIN_URL) return toast('Connect to Admin API first', 'error');
+  var arr = Array.from(files); if (!arr.length) return;
+  var prog = document.getElementById('prod-prog');
+  var bar  = document.getElementById('prod-prog-bar');
+  prog.style.display = 'block'; bar.style.width = '0%';
+  var done = 0;
+  arr.forEach(function(file) {
+    if (file.size > 5*1024*1024) { toast(file.name+' too large (max 5MB)','error'); done++; return; }
+    var r = new FileReader();
+    r.onload = function(e) {
+      post({action:'upload_image', data:e.target.result.split(',')[1], mime:file.type, filename:file.name})
+        .then(function(res) {
+          done++;
+          bar.style.width = Math.round(done/arr.length*100)+'%';
+          if (res.status==='ok') {
+            prodImgUrls.push(res.url);
+            renderProdPreviews(); syncProdFields();
+            toast('Uploaded!','success');
+          } else { toast('Upload failed: '+(res.message||''),'error'); }
+          if (done===arr.length) setTimeout(function(){ prog.style.display='none'; },800);
+        }).catch(function(){ done++; toast('Upload error','error'); });
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function renderProdPreviews() {
+  document.getElementById('prod-previews').innerHTML = prodImgUrls.map(function(u,i){
+    return '<div class="img-preview-item"><img src="'+u+'"><button class="remove-img" onclick="removeProdImg('+i+')">×</button></div>';
+  }).join('');
+}
+
+function removeProdImg(i) { prodImgUrls.splice(i,1); renderProdPreviews(); syncProdFields(); }
+
+function syncProdFields() {
+  document.getElementById('pf-images').value = prodImgUrls.join(', ');
+  if (prodImgUrls.length) document.getElementById('pf-imgurl').value = prodImgUrls[0];
+}
+
+function uploadArtImage(files) {
+  if (!files.length) return;
+  var file = files[0];
+  var r = new FileReader();
+  r.onload = function(e) {
+    post({action:'upload_image',data:e.target.result.split(',')[1],mime:file.type,filename:file.name})
+      .then(function(res){
+        if (res.status==='ok') {
+          artImgUrl = res.url;
+          document.getElementById('af-imgurl').value = res.url;
+          showArtPreview(res.url);
+          toast('Photo uploaded!','success');
+        } else toast('Upload failed','error');
+      });
+  };
+  r.readAsDataURL(file);
+}
+
+function showArtPreview(url) {
+  document.getElementById('art-previews').innerHTML = '<div class="img-preview-item"><img src="'+url+'" style="border-radius:50%;"><button class="remove-img" onclick="artImgUrl=\\'\\';document.getElementById(\\'art-previews\\').innerHTML=\\'\\';document.getElementById(\\'af-imgurl\\').value=\\'\\'">×</button></div>';
+}
+
+function setupDrag(zoneId, handler) {
+  var zone = document.getElementById(zoneId); if (!zone) return;
+  zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', function(){ zone.classList.remove('drag'); });
+  zone.addEventListener('drop', function(e){ e.preventDefault(); zone.classList.remove('drag'); handler(e.dataTransfer.files); });
+}
+
+// ── Confirm / Delete ──
+function confirmDel(type, id, name) {
+  pendingDel = {type:type, id:id};
+  document.getElementById('confirm-title').textContent = 'Delete ' + (type==='product'?'Product':'Artisan') + '?';
+  document.getElementById('confirm-msg').textContent = '"'+name+'" will be removed from your Google Sheet.';
+  document.getElementById('confirm-ok').onclick = function(){ execDel(); closeConfirm(); };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function execDel() {
+  if (!pendingDel) return;
+  var action = pendingDel.type==='product' ? 'delete_product' : 'delete_artisan';
+  post({action:action, id:pendingDel.id}).then(function(r){
+    if (r.status==='ok') { toast('Deleted','info'); refreshAll(); }
+    else toast('Delete failed: '+r.message,'error');
+  });
+  pendingDel = null;
+}
+
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+
+function openDriveFolder() {
+  if (!ADMIN_URL) return toast('Connect API first','error');
+  get('?action=folders').then(function(r){ if(r.folder_url) window.open(r.folder_url,'_blank'); });
+}
+
+function toast(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'toast '+(type||'info');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3500);
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key==='Escape') { closeProd(); closeArt(); closeConfirm(); }
+});
+</script>
+</body>
+</html>
